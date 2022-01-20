@@ -1,28 +1,32 @@
-() process_transfer(sender, reciever, amount, body, sender_query_id) impure inline_ref {
+int process_transfer(sender, reciever, amount, silent?, body, sender_query_id) impure inline_ref {
   var (token_data, custom_data) = load_data();
   var [balances, pending_queries, total_supply] = token_data;
 
   int addr_new? = balances~transfer(sender, reciever, amount);
   int fee = addr_new? ? settings::new_addr_fee() : 0;
 
-  int query_id = cur_lt();
+  ifnot (silent?) {
+    int query_id = cur_lt();
 
-  var query = pack_transfer_query(sender, reciever, amount, sender_query_id, now());
-  pending_queries~udict_set_builder(64, query_id, query);
-  fee += settings::query_storage_fee();
+    var query = pack_transfer_query(sender, reciever, amount, sender_query_id, now());
+    pending_queries~udict_set_builder(64, query_id, query);
+    fee += settings::query_storage_fee();
 
-  var msg = begin_message(0x18, reciever, 0)
-    .store_uint(op::recv_transfer(), 32)
-    .store_uint(query_id, 64)
-    .store_slice(sender)
-    .store_extra(amount)
-    .store_slice(body);
+    var msg = begin_message(0x18, reciever, 0)
+      .store_uint(op::recv_transfer(), 32)
+      .store_uint(query_id, 64)
+      .store_slice(sender)
+      .store_extra(amount)
+      .store_slice(body);
 
-  raw_reserve(fee, 4); ;; debit fee
-  send_raw_message(msg.end_cell(), 128); ;; forward funds
+    raw_reserve(fee, 4); ;; debit fee
+    send_raw_message(msg.end_cell(), 128); ;; forward funds
+  }
 
   token_data = [balances, pending_queries, total_supply];
   save_data(token_data, custom_data);
+
+  return fee;
 }
 
 () process_transfer_confirmation(sender, query_id, success?, extra_change, body) impure inline_ref {
@@ -94,7 +98,8 @@
     int amount = in_msg~load_extra();
     slice body = in_msg;
 
-    return process_transfer(sender, reciever, amount, body, query_id);
+    process_transfer(sender, reciever, amount, false, body, query_id);
+    return ();
   }
 
   if (op == resp::confirm_transfer()) {
@@ -102,6 +107,15 @@
     int extra_change = in_msg~load_extra();
     slice body = in_msg;
     return process_transfer_confirmation(sender, query_id, true, extra_change, body);
+  }
+
+  if (op == op::silent_transfer()) {
+    var reciever = ensure_simple_addr(in_msg~load_msg_addr());
+    int amount = in_msg~load_extra();
+
+    int fee = process_transfer(sender, reciever, amount, true, null(), null());
+    raw_reserve(fee, 4);
+    return send_message_back(sender, resp::silent_transfer_ok(), query_id, -1, 0, 128);
   }
 
   ifnot (op >> 31) {
