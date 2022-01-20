@@ -1,0 +1,2 @@
+int settings::new_addr_fee() asm "1 10 Gram*/ PUSHINT";
+int settings::query_storage_fee() asm "1 10 Gram*/ PUSHINT";

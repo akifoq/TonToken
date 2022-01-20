@@ -1,0 +1,18 @@
+int get_total_supply() method_id {
+  var (token_data, _) = load_data();
+  var [_, _, total_supply] = token_data;
+  return total_supply;
+}
+
+int get_balance_of(int wc, int addr) method_id {
+  slice cs = begin_cell()
+    .store_uint(4, 3)
+    .store_uint(wc, 8)
+    .store_uint(addr, 256)
+  .end_cell().begin_parse();
+
+  var (token_data, _) = load_data();
+  var [balances, _, _] = token_data;
+
+  return balances.get_extra(cs);
+}

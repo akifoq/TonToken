@@ -1,0 +1,11 @@
+_ transfer(balances, sender, reciever, amount) impure inline_ref {
+  int sender_balance = balances~delete_get_extra(sender);
+  int reciever_balance = balances.get_extra(reciever);
+
+  throw_if(30, amount > sender_balance);
+
+  balances~set_extra(sender, sender_balance - amount);
+  balances~set_extra(reciever, reciever_balance + amount);
+
+  return (balances, (reciever_balance == 0) & (amount > 0));
+}

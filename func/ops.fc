@@ -1,0 +1,6 @@
+int op::transfer() asm "0x4034a3c0 PUSHINT";
+int op::recv_transfer() asm "0x5fb163bd PUSHINT";
+
+int resp::confirm_transfer() asm "0xbc85eb11 PUSHINT";
+int resp::transfer_ok() asm "0x9595f2b8 PUSHINT";
+int resp::transfer_fail() asm "0x9595f2b8 PUSHINT";

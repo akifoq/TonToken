@@ -1,0 +1,16 @@
+extra#_ amount:Grams = Extra;
+
+addr_std$10 anycast:(## 1) {anycast = 0}
+      workchain_id:int8 address:bits256 = MsgAddrSmpl;
+
+transfer#4034a3c0 query_id:uint64
+    reciever:MsgAddrSmpl amount:Extra body:Any = Request;
+
+recv_transfer#0x5fb163bd query_id:uint64
+    sender:MsgAddrSmpl amount:Extra body:Any = Request;
+
+confirm_transfer#0x3c85eb11 query_id:uint64
+    reciever:MsgAddrSmpl change:Extra body:Any = Request;
+
+transfer_ok#0x9f94a9c5 query_id:uint64
+    reciever:MsgAddrSmpl change:Extra body:Any = Response;
