@@ -1,2 +1,3 @@
 func/auto/*-code.fif
-data/*
+data/*.boc
+data/*.addr
