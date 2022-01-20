@@ -1,0 +1,39 @@
+"TonUtil.fif" include
+"Asm+.fif" include
+
+' Gram, : Extra,
+
+variable @balances
+{ @balances @ 267 sdict! drop @balances ! } : @balances!
+variable @decimals
+variable @total_supply
+{ @total_supply @ + @total_supply ! } : @total_supply+!
+0 @total_supply !
+
+{ dup @decimals !
+  1 { 10 * } rot times 1
+  { <b bl word parse-smc-addr drop Addr, b> <s swap
+    bl word (number)
+    1- ' */r ' * cond
+    dup @total_supply+!
+    <b swap Extra, b> <s
+    swap @balances!
+  } does : MINT
+} : DECIMALS
+
+"setup.fif" include
+
+<b @balances @ dict,
+   null dict,
+   @total_supply @ Extra,
+b> constant token_data
+<b token_data ref, b> constant storage
+
+<{ SETCP0 ACCEPT
+   "../func/auto/token-code.fif" include PUSHREF SETCODE
+}>c constant code
+
+0 constant wc
+"../data/token" constant file-base
+
+"create-contract.fif" include

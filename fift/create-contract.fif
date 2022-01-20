@@ -1,0 +1,14 @@
+<b b{0011} s, code ref, storage ref, null dict, b> constant StateInit
+
+StateInit hashu wc swap 2dup 2constant contract_addr
+2dup file-base +".addr" save-address-verbose
+2dup ."Raw address: " .addr cr
+2dup ."Bounceable address: " 6 .Addr cr
+."Non-bounceable address: " 7 .Addr cr
+
+{ b{0} s, def? body { @' body s, } if } : body,
+
+<b b{1000100} s, contract_addr addr, b{000011} s, StateInit ref, body, b>
+2 boc+>B
+file-base +"-create.boc" tuck B>file
+."(Saved contract creating query to file " type .")" cr

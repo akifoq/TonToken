@@ -16,3 +16,5 @@ int get_balance_of(int wc, int addr) method_id {
 
   return balances.get_extra(cs);
 }
+
+int get_decimals() method_id asm "@decimals PUSHINT";
