@@ -1,35 +1,36 @@
 _ transfer(balances, sender, reciever, amount) impure inline_ref {
-  int sender_balance = balances~delete_get_extra(sender);
-  int reciever_balance = balances.get_extra(reciever);
+  var (sender_balance, sender_found?) = balances.get_extra(sender);
+  var (reciever_balance, reciever_found?) = balances.get_extra(reciever);
 
+  ;; explicit (but unnecessary) check
   throw_if(30, amount > sender_balance);
 
   balances~set_extra(sender, sender_balance - amount);
   balances~set_extra(reciever, reciever_balance + amount);
 
-  return (balances, (reciever_balance == 0) & (amount > 0));
+  return (balances, (sender_found?, reciever_found?));
 }
 
 ;; unused, to be deleted by fift assembler
 _ mint(info, addr, amount) inline_ref {
   var (balances, total_supply) = info;
 
-  int balance = balances.get_extra(addr);
+  var (balance, found?) = balances.get_extra(addr);
   balances~set_extra(addr, balance + amount);
   total_supply += amount;
 
   info = (balances, total_supply);
-  return (info, (balance == 0) & (amount > 0));
+  return (info, found?);
 }
 
 ;; in some cases, it's better to burn manually (lower gas fees)
 _ burn(info, addr, amount) impure inline_ref {
   var (balances, total_supply) = info;
 
-  int balance = balances~delete_get_extra(addr);
+  var (balance, _) = balances.get_extra(addr);
   balances~set_extra(addr, balance - amount);
   total_supply -= amount;
 
   info = (balances, total_supply);
-  return (info, (balance > 0) & (balance - amount == 0));
+  return (info, ());
 }

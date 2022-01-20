@@ -74,28 +74,17 @@ _ load_data() impure inline_ref {
   .end_cell());
 }
 
-int get_extra(dict, id) inline_ref {
+(int, int) get_extra(dict, id) inline_ref {
   (slice cs, int found?) = dict.dict_get?(267, id);
   int extra = 0;
   if (found?) {
     extra = cs~load_extra();
   }
-  return extra;
-}
-
-_ ~delete_get_extra(dict, id) inline_ref {
-  (slice cs, int found?) = dict~dict_delete_get?(267, id);
-  int extra = 0;
-  if (found?) {
-    extra = cs~load_extra();
-  }
-  return (dict, extra);
+  return (extra, found?);
 }
 
 _ ~set_extra(dict, id, extra) inline_ref {
-  if (extra != 0) {
-    dict~dict_set_builder(267, id, begin_cell().store_extra(extra));
-  }
+  dict~dict_set_builder(267, id, begin_cell().store_extra(extra));
   return (dict, ());
 }
 

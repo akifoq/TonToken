@@ -14,7 +14,8 @@ int get_balance_of(int wc, int addr) method_id {
   var (token_data, _) = load_data();
   var [balances, _, _] = token_data;
 
-  return balances.get_extra(cs);
+  var (balance, _) = balances.get_extra(cs);
+  return balance;
 }
 
 int get_decimals_asm() asm "@decimals @ PUSHINT";

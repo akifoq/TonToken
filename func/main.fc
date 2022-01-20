@@ -2,8 +2,9 @@ int process_transfer(sender, reciever, amount, silent?, body, sender_query_id) i
   var (token_data, custom_data) = load_data();
   var [balances, pending_queries, total_supply] = token_data;
 
-  int addr_new? = balances~transfer(sender, reciever, amount);
-  int fee = addr_new? ? settings::new_addr_fee() : 0;
+  var (sender_found?, reciever_found?) = balances~transfer(sender, reciever, amount);
+  ;; collect fee for storing new map entries (amount is allowed to be 0)
+  int fee = (2 + sender_found? + reciever_found?) * settings::new_addr_fee();
 
   ifnot (silent?) {
     int query_id = cur_lt();
@@ -48,8 +49,6 @@ int process_transfer(sender, reciever, amount, silent?, body, sender_query_id) i
 
   if (extra_change > 0) {
     balances~transfer(q_reciever, q_sender, extra_change);
-    ;; no need to collect storage fee
-    ;; because fee for storing q_sender was already collected at least once
   }
 
   int time_passed = now() - utime_since;
