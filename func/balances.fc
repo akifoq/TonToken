@@ -9,3 +9,27 @@ _ transfer(balances, sender, reciever, amount) impure inline_ref {
 
   return (balances, (reciever_balance == 0) & (amount > 0));
 }
+
+;; unused, to be deleted by fift assembler
+_ mint(info, addr, amount) inline_ref {
+  var (balances, total_supply) = info;
+
+  int balance = balances.get_extra(addr);
+  balances~set_extra(addr, balance + amount);
+  total_supply += amount;
+
+  info = (balances, total_supply);
+  return (info, (balance == 0) & (amount > 0));
+}
+
+;; in some cases, it's better to burn manually (lower gas fees)
+_ burn(info, addr, amount) impure inline_ref {
+  var (balances, total_supply) = info;
+
+  int balance = balances~delete_get_extra(addr);
+  balances~set_extra(addr, balance - amount);
+  total_supply -= amount;
+
+  info = (balances, total_supply);
+  return (info, (balance > 0) & (balance - amount == 0));
+}
