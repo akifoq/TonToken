@@ -7,7 +7,7 @@
 
   int query_id = cur_lt();
 
-  var query = pack_transfer_query(sender, reciever, amount, sender_query_id);
+  var query = pack_transfer_query(sender, reciever, amount, sender_query_id, now());
   pending_queries~udict_set_builder(64, query_id, query);
   fee += settings::query_storage_fee();
 
@@ -30,7 +30,8 @@
   var [balances, pending_queries, total_supply] = token_data;
 
   (slice cs, _) = pending_queries~udict_delete_get?(64, query_id);
-  var (q_sender, q_reciever, amount, sender_query_id) = unpack_transfer_query(cs);
+  var (q_sender, q_reciever, amount,
+       sender_query_id, utime_since) = unpack_transfer_query(cs);
   throw_unless(32, slice_data_equal?(sender, q_reciever));
 
   int ans_tag = resp::transfer_ok();
@@ -47,7 +48,10 @@
     ;; because fee for storing q_sender was already collected at least once
   }
 
-  int returned_fee = settings::query_storage_fee();
+  int time_passed = now() - utime_since;
+  int collected_fee = settings::query_storage_fee();
+  int returned_fee = collected_fee - collected_fee * time_passed / settings::storage_time();
+  ;; returned_fee > 0 as long as now() - utime_since < 86 years
   var msg = begin_message(0x18, q_sender, returned_fee)
     .store_uint(ans_tag, 32)
     .store_uint(sender_query_id, 64)
