@@ -72,6 +72,33 @@ int process_transfer(sender, reciever, amount, silent?, body, sender_query_id) i
   process_transfer_confirmation(sender, query_id, false, null(), null());
 }
 
+int process_mint(sender, query_id, addr, amount) impure inline_ref {
+  var (token_data, custom_data) = load_data();
+  var [balances, _2, total_supply] = token_data;
+  var [owner] = custom_data;
+  throw_unless(33, slice_data_equal?(owner, sender));
+
+  int addr_new? = (balances, total_supply)~mint(addr, amount);
+  int fee = addr_new? ? settings::new_addr_fee() : 0;
+
+  token_data = [balances, _2, total_supply];
+  save_data(token_data, custom_data);
+
+  return fee;
+}
+
+() process_burn(sender, query_id, addr, amount) impure inline_ref {
+  var (token_data, custom_data) = load_data();
+  var [balances, _2, total_supply] = token_data;
+  var [owner] = custom_data;
+  throw_unless(33, slice_data_equal?(owner, sender));
+
+  (balances, total_supply)~burn(addr, amount);
+
+  token_data = [balances, _2, total_supply];
+  save_data(token_data, custom_data);
+}
+
 () recv_internal(cell in_msg_cell, slice in_msg) impure {
   var cs = in_msg_cell.begin_parse();
   var flags = cs~load_uint(4);
@@ -115,6 +142,25 @@ int process_transfer(sender, reciever, amount, silent?, body, sender_query_id) i
     int fee = process_transfer(sender, reciever, amount, true, null(), null());
     raw_reserve(fee, 4);
     return send_message_back(sender, resp::silent_transfer_ok(), query_id, -1, 0, 128);
+  }
+
+  if (op == op::mint()) {
+    slice addr = in_msg~load_msg_addr(); ;; no need to ensure_simple_addr
+    int amount = in_msg~load_extra();
+    int fee = process_mint(sender, query_id, addr, amount);
+    int mode = 64;
+    if (fee > 0) {
+      raw_reserve(fee, 4);
+      mode = 128;
+    }
+    return send_message_back(sender, resp::mint_ok(), query_id, -1, 0, mode);
+  }
+
+  if (op == op::burn()) {
+    slice addr = in_msg~load_msg_addr(); ;; no need to ensure_simple_addr
+    int amount = in_msg~load_extra();
+    process_burn(sender, query_id, addr, amount);
+    return send_message_back(sender, resp::burn_ok(), query_id, -1, 0, 64);
   }
 
   ifnot (op >> 31) {

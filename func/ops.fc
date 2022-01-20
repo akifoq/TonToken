@@ -6,3 +6,8 @@ int resp::confirm_transfer() asm "0xbc85eb11 PUSHINT";
 int resp::transfer_ok() asm "0x9595f2b8 PUSHINT";
 int resp::transfer_fail() asm "0xbed2072b PUSHINT";
 int resp::silent_transfer_ok() asm "0xb48aba01 PUSHINT";
+
+int op::mint() asm "0x0318f361 PUSHINT";
+int resp::mint_ok() asm "0xc54cf41b PUSHINT";
+int op::burn() asm "0x55521d04 PUSHINT";
+int resp::burn_ok() asm "0xdda48b6a PUSHINT";

@@ -14,6 +14,7 @@
                  total_supply:Extra
                = TokenData;
     storage#_ ^TokenData
+              owner:MsgAddrSmpl
             = Storage;
     ;; we store token-related data in a separate cell
     ;; to make modification of reference implementation easer
@@ -60,17 +61,17 @@ _ load_data() impure inline_ref {
   var ds = get_data().begin_parse();
   var c = ds~load_ref();
   var token_data = unpack_token_data(c);
-  var custom_data = []; ;; parse your data here
+  var custom_data = [ds~load_msg_addr()];
   return (token_data, custom_data);
 }
 
-() save_data(token_data, [] custom_data) impure inline_ref {
-  ;; var [] = custom_data;
+() save_data(token_data, custom_data) impure inline_ref {
+  var [owner] = custom_data;
   var token_cell = pack_token_data(token_data);
 
   set_data(begin_cell()
     .store_ref(token_cell)
-    ;; store your data here
+    .store_slice(owner)
   .end_cell());
 }
 

@@ -7,6 +7,9 @@ Also there is silent transfers, primary for wallet contracts which don't support
 
 `allowance` mechanism isn't implemented, because it's just an alternative to notify-on-transfer interface. It might be more convinient in synchronous Ethereum model, but is totally inconvinient for asynchronous TON architecture.
 
+## Ownable branch
+Here is an example of reference implementation modification.
+
 ## Token requests and responses
 As per `func/scheme.tlb`.
 ### Transfer
