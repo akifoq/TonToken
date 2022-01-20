@@ -1,0 +1,42 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"GetOpt.fif" include
+
+' Gram, : Extra,
+
+{ show-options-help 1 halt } : usage
+
+9 =: decimals
+
+begin-options
+     " <dest-addr> <amount> [-D <decimals> ] [ -B <body> ]" +cr +tab
+    +"Creates an internal message body with request to send <amount> of token to <dest-addr> "
+    +"and saves it to ../data/token-request.boc" +cr +tab
+    +"By default silent transfer is used. Set <body> argument to use usual transfer."
+    disable-digit-options generic-help-setopt
+  "B" "--body" { =: body-boc-file } short-long-option-arg
+    "Switches from silent mode to usual and sets the payload of the transfer notification message" option-help
+  "D" "--decimals" { parse-int =: decimals } short-long-option-arg
+    "Sets the decimals of the token (9 by default)" option-help
+  "h" "--help" { usage } short-long-option
+    "Shows a help message" option-help
+parse-options
+
+$# 2 <> ' usage if
+
+1 { 10 * } decimals times constant base
+
+$1 parse-smc-addr drop 2constant dest_addr
+base $2 (number) 1- ' */r ' * cond constant amount
+
+def? body-boc-file { 0x4034a3c0 } { 0x333cd134 } cond constant op
+def? body-boc-file { @' body-boc-file file>B B>boc } { <b b> } cond <s constant body
+
+<b op 32 u,
+   now 64 u,
+   dest_addr Addr,
+   amount Extra,
+   body s,
+b> 2 boc+>B
+"../data/token-request.boc" tuck B>file
+."(Saved to file " type .")" cr
