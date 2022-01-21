@@ -8,7 +8,7 @@ _ transfer(balances, sender, reciever, amount) impure inline_ref {
   balances~set_extra(sender, sender_balance - amount);
   balances~set_extra(reciever, reciever_balance + amount);
 
-  return (balances, (sender_found?, reciever_found?));
+  return (balances, (~ sender_found?, ~ reciever_found?));
 }
 
 ;; unused, to be deleted by fift assembler
@@ -20,7 +20,7 @@ _ mint(info, addr, amount) inline_ref {
   total_supply += amount;
 
   info = (balances, total_supply);
-  return (info, found?);
+  return (info, ~ found?);
 }
 
 ;; in some cases, it's better to burn manually (lower gas fees)
