@@ -1,0 +1,120 @@
+int process_transfer(sender, reciever, amount, silent?, body, sender_query_id) impure inline_ref {
+  var (token_data, custom_data) = load_token_data();
+  var [balances, pending_queries, total_supply] = token_data;
+
+  var (sender_new?, reciever_new?) = balances~transfer(sender, reciever, amount);
+  ;; collect fee for storing new map entries (amount is allowed to be 0)
+  int fee = -(sender_new? + reciever_new?) * settings::new_addr_fee();
+
+  ifnot (silent?) {
+    int query_id = cur_lt();
+
+    var query = pack_transfer_query(sender, reciever, amount, sender_query_id, now());
+    pending_queries~udict_set_builder(64, query_id, query);
+    fee += settings::query_storage_fee();
+
+    var msg = begin_message(0x18, reciever, 0)
+      .store_uint(op::recv_transfer(), 32)
+      .store_uint(query_id, 64)
+      .store_slice(sender)
+      .store_extra(amount)
+      .store_slice(body);
+
+    raw_reserve(fee, 4); ;; debit fee
+    send_raw_message(msg.end_cell(), 128); ;; forward funds
+  }
+
+  token_data = [balances, pending_queries, total_supply];
+  save_token_data(token_data, custom_data);
+
+  return fee;
+}
+
+() process_transfer_confirmation(sender, query_id, success?, extra_change, body) impure inline_ref {
+  var (token_data, custom_data) = load_token_data();
+  var [balances, pending_queries, total_supply] = token_data;
+
+  (slice cs, _) = pending_queries~udict_delete_get?(64, query_id);
+  var (q_sender, q_reciever, amount,
+       sender_query_id, utime_since) = unpack_transfer_query(cs);
+  throw_unless(32, slice_data_equal?(sender, q_reciever));
+
+  int ans_tag = resp::transfer_ok();
+  ifnot (success?) {
+    ;; rollback
+    extra_change = amount;
+    body = empty_slice();
+    ans_tag = resp::transfer_fail();
+  }
+
+  if (extra_change > 0) {
+    balances~transfer(q_reciever, q_sender, extra_change);
+  }
+
+  int time_passed = now() - utime_since;
+  int collected_fee = settings::query_storage_fee();
+  int returned_fee = collected_fee - collected_fee * time_passed / settings::storage_time();
+  ;; returned_fee > 0 as long as now() - utime_since < 86 years
+  var msg = begin_message(0x18, q_sender, returned_fee)
+    .store_uint(ans_tag, 32)
+    .store_uint(sender_query_id, 64)
+    .store_slice(q_reciever)
+    .store_extra(extra_change)
+    .store_slice(body);
+
+  send_raw_message(msg.end_cell(), 64); ;; forward change
+
+  token_data = [balances, pending_queries, total_supply];
+  save_token_data(token_data, custom_data);
+}
+
+() process_rollback(sender, query_id) impure inline {
+  process_transfer_confirmation(sender, query_id, false, null(), null());
+}
+
+int process_token_request(flags, sender, op, in_msg) impure inline_ref {
+  sender~ensure_simple_addr();
+
+  if (op == 0xffffffff) {
+    int query_id = in_msg~load_uint(64);
+    int orig_op = in_msg~load_uint(32);
+    if (flags & 1) {
+      ;; in bounced messages they follow in opposite order
+      (query_id, orig_op)~swap();
+    }
+    if (orig_op == op::recv_transfer()) {
+      process_rollback(sender, query_id);
+      return true;
+    }
+    return false;
+  }
+  int query_id = in_msg~load_uint(64);
+
+  if (op == op::transfer()) {
+    var reciever = ensure_simple_addr(in_msg~load_msg_addr());
+    int amount = in_msg~load_extra();
+    slice body = in_msg;
+
+    process_transfer(sender, reciever, amount, false, body, query_id);
+    return true;
+  }
+
+  if (op == resp::confirm_transfer()) {
+    ;; forward change to sender
+    int extra_change = in_msg~load_extra();
+    slice body = in_msg;
+    process_transfer_confirmation(sender, query_id, true, extra_change, body);
+    return true;
+  }
+
+  if (op == op::silent_transfer()) {
+    var reciever = ensure_simple_addr(in_msg~load_msg_addr());
+    int amount = in_msg~load_extra();
+
+    int fee = process_transfer(sender, reciever, amount, true, null(), null());
+    raw_reserve(fee, 4);
+    send_message_back(sender, resp::silent_transfer_ok(), query_id, -1, 0, 128);
+    return true;
+  }
+  return false;
+}

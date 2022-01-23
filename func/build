@@ -1,1 +1,0 @@
-func -SP stdlib+.fc ops.fc settings.fc msgs.fc storage.fc balances.fc main.fc get-methods.fc -o auto/token-code.fif

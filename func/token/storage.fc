@@ -1,0 +1,98 @@
+{-  extra#_ amount:Grams = Extra;
+
+    addr_std$10 anycast:(## 1) {anycast = 0}
+          workchain_id:int8 address:bits256 = MsgAddrSmpl;
+
+    transfer_info#0 sender:MsgAddrSmpl
+                    reciever:MsgAddrSmpl
+                    amount:Extra
+                    sender_query_id:uint64
+                    utime_since:uint32
+                  = QueryInfo;
+    token_data#_ balances:(HashmapE 267 Extra)
+                 pending_queries:(HashmapE 64 QueryInfo)
+                 total_supply:Extra
+               = TokenData;
+    storage#_ ^TokenData
+            = Storage;
+    ;; we store token-related data in a separate cell
+    ;; to make modification of reference implementation easer
+-}
+
+(slice, int) load_extra(slice s) asm( -> 1 0) "LDGRAMS";
+builder store_extra(builder b, int x) asm "STGRAMS";
+
+_ unpack_transfer_query(slice cs) impure inline_ref {
+  int tag = cs~load_uint(4);
+  throw_unless(31, tag == 0);
+  return (cs~load_msg_addr(), cs~load_msg_addr(),
+          cs~load_extra(), cs~load_uint(64),
+          cs~load_uint(32));
+}
+
+builder pack_transfer_query(sender, reciever, amount, sender_query_id,
+                            utime_since) inline_ref {
+  return begin_cell()
+    .store_uint(0, 4) ;; tag
+    .store_slice(sender)
+    .store_slice(reciever)
+    .store_extra(amount)
+    .store_uint(sender_query_id, 64)
+    .store_uint(utime_since, 32);
+}
+
+_ unpack_token_data(cell c) inline {
+  slice cs = c.begin_parse();
+  return [cs~load_dict(), cs~load_dict(), cs~load_extra()];
+}
+
+cell pack_token_data(token_data) inline {
+  var [balances, pending_queries, total_supply] = token_data;
+  var token_cell = begin_cell()
+    .store_dict(balances)
+    .store_dict(pending_queries)
+    .store_extra(total_supply)
+  .end_cell();
+  return token_cell;
+}
+
+_ load_token_data() impure inline_ref {
+  var ds = get_data().begin_parse();
+  var c = ds~load_ref();
+  var token_data = unpack_token_data(c);
+  return (token_data, ds);
+}
+
+() save_token_data(token_data, custom_data) impure inline_ref {
+  var token_cell = pack_token_data(token_data);
+
+  set_data(begin_cell()
+    .store_ref(token_cell)
+    .store_slice(custom_data)
+  .end_cell());
+}
+
+(int, int) get_extra(dict, id) inline_ref {
+  (slice cs, int found?) = dict.dict_get?(267, id);
+  int extra = 0;
+  if (found?) {
+    extra = cs~load_extra();
+  }
+  return (extra, found?);
+}
+
+_ ~set_extra(dict, id, extra) inline_ref {
+  dict~dict_set_builder(267, id, begin_cell().store_extra(extra));
+  return (dict, ());
+}
+
+;; to avoid storing prefix dict of addresses
+slice ensure_simple_addr(slice addr) impure inline_ref {
+  int tag = addr.preload_uint(3);
+  throw_if(45, tag != 4); ;; addr_std$10 Nothing$0
+  return addr;
+}
+
+(slice, ()) ~ensure_simple_addr(slice addr) inline {
+  return (ensure_simple_addr(addr), ());
+}

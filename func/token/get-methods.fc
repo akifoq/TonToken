@@ -1,5 +1,5 @@
 int get_total_supply() method_id {
-  var (token_data, _) = load_data();
+  var (token_data, _) = load_token_data();
   var [_, _, total_supply] = token_data;
   return total_supply;
 }
@@ -11,7 +11,7 @@ int get_balance_of(int wc, int addr) method_id {
     .store_uint(addr, 256)
   .end_cell().begin_parse();
 
-  var (token_data, _) = load_data();
+  var (token_data, _) = load_token_data();
   var [balances, _, _] = token_data;
 
   var (balance, _) = balances.get_extra(cs);
