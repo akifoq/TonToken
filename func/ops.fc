@@ -1,0 +1,5 @@
+int op::mint() asm "0x0318f361 PUSHINT";
+int op::claim() asm "0x2769de27 PUSHINT";
+
+int resp::mint_ok() asm "0xc54cf41b PUSHINT";
+int resp::claim_ok() asm "0xb6731e88 PUSHINT";

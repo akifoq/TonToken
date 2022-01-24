@@ -1,4 +1,28 @@
-() recv_internal(cell in_msg_cell, slice in_msg) impure {
+int process_mint(sender, amount) impure inline_ref {
+  var (token_data, custom_data) = load_token_data();
+  var [balances, pending_queries, total_supply] = token_data;
+
+  int addr_new? = (balances, total_supply)~mint(sender, amount);
+  int fee = (- addr_new?) * settings::new_addr_fee();
+
+  token_data = [balances, pending_queries, total_supply];
+  save_token_data(token_data, custom_data);
+
+  return fee;
+}
+
+() process_burn(sender, amount) impure inline_ref {
+  var (token_data, custom_data) = load_token_data();
+  var [balances, pending_queries, total_supply] = token_data;
+
+  int addr_new? = (balances, total_supply)~burn(sender, amount);
+  throw_if(40, addr_new?);
+
+  token_data = [balances, pending_queries, total_supply];
+  save_token_data(token_data, custom_data);
+}
+
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
   var cs = in_msg_cell.begin_parse();
   var flags = cs~load_uint(4);
   var sender = cs~load_msg_addr();
@@ -9,6 +33,22 @@
     return ();
   }
   int query_id = in_msg~load_uint(64);
+
+  sender~ensure_simple_addr();
+  if (op == op::mint()) {
+    ;; mint wrapped tons
+    int amount = in_msg~load_grams();
+    int fee = process_mint(sender, amount);
+    raw_reserve(amount + fee, 4);
+    return send_message_back(sender, resp::mint_ok(), query_id, -1, 0, 128);
+  }
+
+  if (op == op::claim()) {
+    ;; burn wrapped tons and get native
+    int amount = in_msg~load_grams();
+    process_burn(sender, amount);
+    return send_message_back(sender, resp::mint_ok(), query_id, -1, amount, 64);
+  }
 
   ifnot (op >> 31) {
     ;; unknown query, return error
