@@ -27,10 +27,10 @@ _ mint(info, addr, amount) inline_ref {
 _ burn(info, addr, amount) impure inline_ref {
   var (balances, total_supply) = info;
 
-  var (balance, _) = balances.get_extra(addr);
+  var (balance, found?) = balances.get_extra(addr);
   balances~set_extra(addr, balance - amount);
   total_supply -= amount;
 
   info = (balances, total_supply);
-  return (info, ());
+  return (info, ~ found?);
 }
