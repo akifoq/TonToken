@@ -75,7 +75,7 @@ int process_transfer(sender, reciever, amount, silent?, body, sender_query_id) i
 int process_token_request(flags, sender, op, in_msg) impure inline_ref {
   sender~ensure_simple_addr();
 
-  if (op == 0xffffffff) {
+  if (op == 0xffffffff) | (op == 0xfffffffe) {
     int query_id = in_msg~load_uint(64);
     int orig_op = in_msg~load_uint(32);
     if (flags & 1) {
